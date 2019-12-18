@@ -195,39 +195,28 @@ void __ISR(_TIMER_5_VECTOR, ipl2) Timer5Handler(void)
 
 
 
-// system 1 second interval tick
-int sys_time_seconds ;
-int x_pos = 0;
-
-
-
-
-// === Timer Thread =================================================
-// update a 1 second tick counter
+// === Animate Thread =================================================
+// map FFT output to the LED matrix
 static PT_THREAD (protothread_animate(struct pt *pt))
 {
     PT_BEGIN(pt);
-     // set up LED to blink
-     mPORTASetBits(BIT_0 );	//Clear bits to ensure light is off.
-     mPORTASetPinsDigitalOut(BIT_0 );    //Set port as output
+    //  // set up LED to blink
+    //  mPORTASetBits(BIT_0 );	//Clear bits to ensure light is off.
+    //  mPORTASetPinsDigitalOut(BIT_0 );    //Set port as output
+
+
+    // array of all the colors used in the display
+    // in rainbow order 
+    UINT16 colors[16] = {COLOR565_RED, COLOR565_ORANGE, COLOR565_YELLOW, COLOR565_LIGHT_GREEN, COLOR565_GREEN, 
+                        COLOR565_ICE, COLOR565_CYAN, COLOR565_NICE_BLUE, COLOR565_BLUE, 
+                        COLOR565_PURPLE,  COLOR565_LIPSTICK, COLOR565_MAGENTA,
+                            COLOR565_PINK, COLOR565_PERIWINKLE,  COLOR565_WHITE, COLOR565_WHITE};
       while(1) {
           
-        PT_WAIT_UNTIL(pt, finished==1);
-        matrix_fillScreen(COLOR565_BLACK);
+        PT_WAIT_UNTIL(pt, finished==1); //wait until FFT computation is complete
+        matrix_fillScreen(COLOR565_BLACK); //clear screen
         
-        UINT16 colors[16] = {COLOR565_RED, COLOR565_ORANGE, COLOR565_YELLOW, COLOR565_LIGHT_GREEN, COLOR565_GREEN, 
-                            COLOR565_ICE, COLOR565_CYAN, COLOR565_NICE_BLUE, COLOR565_BLUE, 
-                            COLOR565_PURPLE,  COLOR565_LIPSTICK, COLOR565_MAGENTA,
-                             COLOR565_PINK, COLOR565_PERIWINKLE,  COLOR565_WHITE, COLOR565_WHITE};
-        
-//        UINT16 colors[7] = {COLOR565_MAGENTA, COLOR565_RED, COLOR565_YELLOW, COLOR565_GREEN, COLOR565_BLUE,
-//                            COLOR565_CYAN, COLOR565_WHITE };
-       // matrix_drawLine(0,0,31,0,colors[5]);
-     //   matrix_drawLine(0,0,0,15,colors[3]);
 
-        int q;
-        int base = 70;
-        int increment = 100;
         
         // TODO: 
         // get rid of first two bins, always have DC offset in those bins
@@ -240,18 +229,22 @@ static PT_THREAD (protothread_animate(struct pt *pt))
         
         // change bins and height to make as cute as possible
        
-        fr[1] = 0.9*fr[2];
-        fr[0] = 0.9*fr[1];
+        fr[1] = 0.9*fr[2]; //change DC bin to be related to bin 3
+        fr[0] = 0.9*fr[1]; //change DC bin to be related to bin 3
         
-        
-        for(q=0;q<nPixels;q++) {
+        int q; //loop variable
+        for(q=0;q<nPixels;q++) { //from 0 to 32 bins
+
             if (fr[q] < oldfr[q]) {
+                // if new value of fr is less than previous value
+                // then slowly decay the amplitude
                 fr[q] = multfix14(float2fix14(0.97),oldfr[q]);
             }
-            UINT16 c;
-            int h;
-            if(0<fr[q] && fr[q]<80){ c = colors[0]; h =0; } //0
-            else if(fr[q]<83)      {c = colors[1]; h = 1;} //2
+            UINT16 c; //color
+            int h; //height
+            // map the amplitude to a color and height
+            if(0<fr[q] && fr[q]<80){ c = colors[0]; h =0; } 
+            else if(fr[q]<83)      {c = colors[1]; h = 1;} 
             else if(fr[q]<86)      {c = colors[2]; h = 2;}
             else if(fr[q]<89)      {c = colors[3]; h = 3;}
             else if(fr[q]<92)      {c = colors[4]; h = 4;}
@@ -261,18 +254,18 @@ static PT_THREAD (protothread_animate(struct pt *pt))
             else if(fr[q]<104)      {c = colors[8]; h = 8;}
             else if(fr[q]<107)      {c = colors[9]; h = 9;}
             else if(fr[q]<110)      {c = colors[10]; h = 10;}
-            else if(fr[q]<113)      {c = colors[11]; h = 11;} //4
-            else if(fr[q]<116)      {c = colors[12]; h = 12;} //6
-            else if(fr[q]<119)      {c = colors[13];h = 13;} //8
-            else if(fr[q]<122)      {c = colors[14];h = 14;} //10
-            else                    {c = colors[15]; h = 15;} //12                   
-            //h = fr[q]*.3;
-//            int h = fr[q]/20+1;
-//            if(h>15) h = 15;
-            matrix_drawLine(31-q,0,31-q,h,c);
-            oldfr[q] = fr[q];
+            else if(fr[q]<113)      {c = colors[11]; h = 11;} 
+            else if(fr[q]<116)      {c = colors[12]; h = 12;} 
+            else if(fr[q]<119)      {c = colors[13];h = 13;} 
+            else if(fr[q]<122)      {c = colors[14];h = 14;} 
+            else                    {c = colors[15]; h = 15;}                   
+
+            matrix_drawLine(31-q,0,31-q,h,c); //draw the column
+            oldfr[q] = fr[q]; //set oldfr to previous value of fr 
         }
-        PT_YIELD_TIME_msec(30);
+        PT_YIELD_TIME_msec(30); 
+        //this yield is necessary to allow the FFT thread to run
+        
          //NEVER exit while
       } // END WHILE(1)
   PT_END(pt);
