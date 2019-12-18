@@ -1,6 +1,7 @@
 /*
  * File:        main.c
- * Author:      Sam Miller
+ * Author:      Asena Ulug, Cynthia Zelga, Joceyln Gilbert
+                Adapted from Sam Miller
  * Target PIC:  PIC32MX250F128B
  */
 // Declare this file as main application for the pre-processor
