@@ -7,18 +7,17 @@
 
 // Color definitions
 #define COLOR565_BLACK   0x0000
-#define	COLOR565_BLUE    0x001F
+#define COLOR565_BLUE    0x001F
 #define COLOR565_ICE     (3 + (63 << 5) + (0 << 11))
-#define	COLOR565_RED     0xF800
-//#define COLOR565_ORANGE  0xFB40
+#define COLOR565_RED     0xF800
 #define COLOR565_ORANGE  (0 + (4 << 5) + (31 << 11))
-#define	COLOR565_GREEN   0x0CE0//0x07E0 
+#define COLOR565_GREEN   0x0CE0
 #define COLOR565_LIGHT_GREEN  (0 + (63 << 5) + (4 << 11))
-#define COLOR565_CYAN    0x07FF //00000 011111 11111
+#define COLOR565_CYAN    0x07FF 
 #define COLOR565_MAGENTA 0xF81F
 #define COLOR565_LIPSTICK (10 + (5 << 5) + (31 << 11))
 #define COLOR565_PINK     (3 + (0 << 5) + (15 << 11))
-#define COLOR565_PURPLE  (31 + (0 << 5) + (4 << 11)) //44DF 176 0 255 10000 000000 11111
+#define COLOR565_PURPLE  (31 + (0 << 5) + (4 << 11)) 
 #define COLOR565_YELLOW  0xFFE0
 #define COLOR565_MUSTARD (0 + (4 << 5) + (5 << 11))
 #define COLOR565_NICE_BLUE (31 + (5 << 5) + (0 << 11))
