@@ -192,46 +192,7 @@ void __ISR(_TIMER_5_VECTOR, ipl2) Timer5Handler(void)
 //        junk = ReadSPI2(); 
     
 }
-//=== Serial terminal thread =================================================
 
-static PT_THREAD (protothread_serial(struct pt *pt))
-{
-    PT_BEGIN(pt);
-      static char cmd[30];
-      static float value;
-      while(1) {
-          
-          PT_YIELD_TIME_msec(200);
-          int sample_number;
-          for (sample_number = 0; sample_number < nSamp-1; sample_number++) {
-            
-            //print out values at one x
-            cursor_pos(2+sample_number,1);
-            pixels[sample_number] = -fr[sample_number] + 200;
-            sprintf(PT_send_buffer,"sn=%d value=%d\n", sample_number, pixels[sample_number]);
-            PT_SPAWN(pt, &pt_DMA_output, PT_DMA_PutSerialBuffer(&pt_DMA_output) );
-            //no zeroes
-        }
-//          int k;
-//          for (k =0; k<64; k++){
-//            cursor_pos(2+k,1);
-//            sprintf(PT_send_buffer,"j=%d dout[j]=%d\n", k, dout[k].re+ dout[k].im);
-//            PT_SPAWN(pt, &pt_DMA_output, PT_DMA_PutSerialBuffer(&pt_DMA_output) );
-//              
-//          }
-          
-//          cursor_pos(6,1);
-//          sprintf(PT_send_buffer,"j=%d dout[j]=%d\n", 0, dout[0].re);
-//          PT_SPAWN(pt, &pt_DMA_output, PT_DMA_PutSerialBuffer(&pt_DMA_output) );
-//          cursor_pos(8,1);
-//          sprintf(PT_send_buffer,"j=%d dout[j]=%d\n", 1, dout[1].re);
-//          PT_SPAWN(pt, &pt_DMA_output, PT_DMA_PutSerialBuffer(&pt_DMA_output) );
-//          clr_right ; 
-
-            // never exit while
-      } // END WHILE(1)
-  PT_END(pt);
-} // thread 3
 
 
 // === Update Matrix Thread ====================================================
