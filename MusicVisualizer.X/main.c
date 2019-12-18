@@ -147,40 +147,34 @@ begin
     end
 end
     
-volatile int done = 0;
-volatile int finished = 1;
-int index = 0;
+volatile int done = 0; //flag that indicates whether FFT input array is full
+// set by the ISR, checked by the FFT thread
+
+volatile int finished = 1; //flag that indicates whether FFT calculation is complete
+//set by FFT thread, checked by ISR and animate thread
+
+int index = 0; //index into the FFT input array
+// used by ISR to put ADC value into correct index of array
 void __ISR(_TIMER_5_VECTOR, ipl2) Timer5Handler(void)
 {
     int junk;
     mT5ClearIntFlag();
-    done = 0;
-    if(finished) {
+    done = 0; //indicates FFT input array is not full yet
+    if(finished) { //only store ADC value if FFT computation is complete
         int adc_9;
         adc_9 = ReadADC10(0);   // read the result of channel 9 conversion from the idle buffer
         AcquireADC10(); // not needed if ADC_AUTO_SAMPLING_ON below
-        DAC_data_A = adc_9 << 2 ; 
-        //unflag done
-        
-        v_in[index] = DAC_data_A;
-        index++;
-        if (index == nSamp) {
-            //flag done
-            done = 1;
-            index = 0;
-        }
-    //}
-    //        max = -1;
-    //        bin = 0;
-    //        int j;
-    //        for (j = 0; j < 64; j++){
-    //            if (dout[j].re > max){
-    //                max =dout[j].re;
-    //                bin = j;
-    //            }
-    //        }
-        }
+        DAC_data_A = adc_9 << 2 ; // use this if you want to output data to DAC 
 
+        v_in[index] = DAC_data_A; //store ADC data in FFT input array
+        index++; //increment index
+        if (index == nSamp) { //if input array full
+            done = 1; //flag that indicates input array full
+            index = 0; //reset index to 0
+        }
+    }
+
+    // Use code below if you want to output ADC value to DAC
         // === Channel A =============
         // wait for possible port expander transactions to complete
 //        while (TxBufFullSPI2());
