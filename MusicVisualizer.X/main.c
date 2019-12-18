@@ -175,21 +175,23 @@ void __ISR(_TIMER_5_VECTOR, ipl2) Timer5Handler(void)
     }
 
     // Use code below if you want to output ADC value to DAC
+    /*
         // === Channel A =============
         // wait for possible port expander transactions to complete
-//        while (TxBufFullSPI2());
-//        // reset spi mode to avoid conflict with port expander
-//    //    SPI_Mode16();
-//        while (SPI2STATbits.SPIBUSY); // wait for end of transaction
-//        // CS low to start transaction
-//         mPORTBClearBits(BIT_4); // start transaction
-//        // write to spi2 
-//        WriteSPI2( DAC_config_chan_A | (DAC_data_A & 0xfff) );
-//        while (SPI2STATbits.SPIBUSY); // wait for end of transaction
-//         // CS high
-//        mPORTBSetBits(BIT_4); // end transaction
-//        // need to read SPI channel to avoid confusing port expander
-//        junk = ReadSPI2(); 
+       while (TxBufFullSPI2());
+       // reset spi mode to avoid conflict with port expander
+   //    SPI_Mode16();
+       while (SPI2STATbits.SPIBUSY); // wait for end of transaction
+       // CS low to start transaction
+        mPORTBClearBits(BIT_4); // start transaction
+       // write to spi2 
+       WriteSPI2( DAC_config_chan_A | (DAC_data_A & 0xfff) );
+       while (SPI2STATbits.SPIBUSY); // wait for end of transaction
+        // CS high
+       mPORTBSetBits(BIT_4); // end transaction
+       // need to read SPI channel to avoid confusing port expander
+       junk = ReadSPI2(); 
+*/
     
 }
 
@@ -265,21 +267,20 @@ static PT_THREAD (protothread_animate(struct pt *pt))
         }
         PT_YIELD_TIME_msec(30); 
         //this yield is necessary to allow the FFT thread to run
-        
+
          //NEVER exit while
       } // END WHILE(1)
   PT_END(pt);
 } // timer thread
 
 
-//GET RID OF DMA STUFF!!!
+
 
 // We have 32 bins, for each bin delta_f = 125 Hz
 // Each bin corresponds to a column on the LED matrix display
 // === FFT Thread =============================================
     
-// DMA channel busy flag
-#define CHN_BUSY 0x80
+
 #define log_min 0x10   
 static PT_THREAD (protothread_fft(struct pt *pt))
 {
@@ -291,15 +292,12 @@ static PT_THREAD (protothread_fft(struct pt *pt))
     
     while(1) {
        
-        // enable ADC DMA channel and get
-        // 512 samples from ADC
-//        DmaChnEnable(0);
-        // yield until DMA done: while((DCH0CON & Chn_busy) ){};
+
         
         //Put in a yield until v_in[] is filled. Will use a variable "done" to signal done
         PT_WAIT_UNTIL(pt, done == 1);
-        finished = 0;
-        // 
+        finished = 0; // indicates FFT computation is not yet finished
+        
         // profile fft time
         WriteTimer4(0);
         
@@ -344,41 +342,23 @@ static PT_THREAD (protothread_fft(struct pt *pt))
             // bound the noise at low amp
             if(fr[sample_number]<log_min) fr[sample_number] = log_min;
         }
+           
         
-        // timer 4 set up with prescalar=8, 
-        // hence mult reading by 8 to get machine cycles
-//        sprintf(buffer, "FFT cycles %d", (ReadTimer4())*8);
-//        printLine2(0, buffer, ILI9340_WHITE, ILI9340_BLACK);
+        finished = 1; //indicates FFT computation is done 
+
+        //use this code below to print to PUTTY
+        /*
+       for (sample_number = 0; sample_number < nPixels; sample_number++) {
+           
+           //print out values at one x
+           cursor_pos(2+sample_number,1);
+           //pixels[sample_number] = -fr[sample_number] + 200;
+           sprintf(PT_send_buffer,"sn=%d value=%d\n", sample_number, fr[sample_number]);
+           PT_SPAWN(pt, &pt_DMA_output, PT_DMA_PutSerialBuffer(&pt_DMA_output) );
+           //no zeroes
+       } 
+        */
         
-        // Display on TFT
-        // erase, then draw
-//        for (sample_number = 0; sample_number < nPixels; sample_number++) {
-////            tft_drawPixel(sample_number, pixels[sample_number], ILI9340_BLACK);
-//            pixels[sample_number] = -fr[sample_number] + 200 ;
-////            tft_drawPixel(sample_number, pixels[sample_number], ILI9340_WHITE);
-//            // reuse fr to hold magnitude 
-//
-//          
-//        }    
-        // PRINT OUT TO PUTTY
-        finished = 1;
-//        for (sample_number = 0; sample_number < nPixels; sample_number++) {
-//            
-//            //print out values at one x
-//            cursor_pos(2+sample_number,1);
-//            //pixels[sample_number] = -fr[sample_number] + 200;
-//            sprintf(PT_send_buffer,"sn=%d value=%d\n", sample_number, fr[sample_number]);
-//            PT_SPAWN(pt, &pt_DMA_output, PT_DMA_PutSerialBuffer(&pt_DMA_output) );
-//            //no zeroes
-//        }
-        
-//        
-//        int j;
-//        for (j=0; j<20; j++){
-//            cursor_pos(2+j,1);
-//            sprintf(PT_send_buffer,"j=%d pixels[j]=%d\n", j,  pixels[j]);
-//            PT_SPAWN(pt, &pt_DMA_output, PT_DMA_PutSerialBuffer(&pt_DMA_output) );
-//        }
         // NEVER exit while
       } // END WHILE(1)
   PT_END(pt);
@@ -386,57 +366,16 @@ static PT_THREAD (protothread_fft(struct pt *pt))
 
 // === Main  ===================================================================
 void main(void) {
-    // Configure the device for maximum performance but do not change the PBDIV
-	// Given the options, this function will change the flash wait states, RAM
-	// wait state and enable prefetch cache but will not change the PBDIV.
-	// The PBDIV value is already set via the pragma FPBDIV option above..
-//	SYSTEMConfig(SYSCLK, SYS_CFG_WAIT_STATES | SYS_CFG_PCACHE);
    
-    
     ANSELA = 0; ANSELB = 0; 
-//    INTDisableInterrupts();
+
     
- //   rtcc_init();
-    matrix_init(FALSE);
-//    ir_init();
+    matrix_init(FALSE); //initialize the LED matrix
+    // false indicates single buffer, dual buffer resulted in a blank matrix
+
     
     INTEnableSystemMultiVectoredInt();
     
-//    // timer 3 setup for adc trigger  ==============================================
-//    // Set up timer3 on,  no interrupts, internal clock, prescalar 1, compare-value
-//    // This timer generates the time base for each ADC sample. 
-//    // works at ??? Hz
-//    #define sample_rate 500000
-//    // 40 MHz PB clock rate
-//    #define timer_match 40000000/sample_rate
-//    OpenTimer3(T3_ON | T3_SOURCE_INT | T3_PS_1_1, timer_match); 
-//    
-//    //=== DMA Channel 0 transfer ADC data to array v_in ================================
-//    // Open DMA Chan1 for later use sending video to TV
-//    #define DMAchan0 0
-//	DmaChnOpen(DMAchan0, 0, DMA_OPEN_DEFAULT);
-//    DmaChnSetTxfer(DMAchan0, (void*)&ADC1BUF0, (void*)v_in, 2, nSamp*2, 2); //512 16-bit integers
-//    DmaChnSetEventControl(DMAchan0, DMA_EV_START_IRQ(28)); // 28 is ADC done
-//    // ==============================================================================
-    
-    
-    
-    
-    
-    
-  //  matrix_fillScreen(COLOR565_BLUE);
-    
-//    matrix_drawPixel(2, 5, COLOR565_BLUE);
-//    matrix_drawLine(0, 0, 0, 10,COLOR565_BLUE );
-//    matrix_drawLine(15, 0, 15, 10,COLOR565_MAGENTA );
-//    matrix_drawLine(10, 0, 10, 10,COLOR565_YELLOW );
-//    matrix_drawLine(20, 0, 20, 10,COLOR565_GREEN );
-//    matrix_drawLine(25, 0, 25, 14,COLOR565_WHITE );
-//    matrix_drawLine(31, 0, 31, 10,COLOR565_CYAN );
-//    matrix_drawLine(27, 0, 27, 15,COLOR565_WHITE ); 
-//    matrix_drawLine(7, 0, 7, 11,COLOR565_RED );
-//    PT_INIT(&pt_update_matrix);
-//    PT_INIT(&pt_serial);
 
     
     // -------------------------ADC----------------
@@ -475,21 +414,18 @@ void main(void) {
 	OpenADC10( PARAM1, PARAM2, PARAM3, PARAM4, PARAM5 ); // configure ADC using the parameters defined above
 
 	EnableADC10(); // Enable the ADC
-    //for adc,using pin 24 = RB13 = AN11
-    
-    //TODO: 
-    
+    //for adc,using pin 24 = RB13 = AN11    
   ///////////////////////////////////////////////////////
+  //-----------------end ADC setup--------------------
     
 //    TIMER used for ISR # 44.1 kHz (audio sampling)/5000 cycles = 8 kHz
     OpenTimer5(T5_ON | T5_SOURCE_INT | T5_PS_1_1, 5000);
-
     // set up the timer interrupt with a priority of 2
     ConfigIntTimer5(T5_INT_ON | T5_INT_PRIOR_2);
     mT5ClearIntFlag(); // and clear the interrupt flag
     
     
-  //-------------------ADC------------------------
+  
     
         // SCK2 is pin 26 
     // SDO2 (MOSI) is in PPS output group 2, could be connected to RB5 which is pin 14
@@ -523,8 +459,7 @@ void main(void) {
     PT_setup();
     
     
-//    
-//    
+ 
 //    // timer 4 setup for profiling code ===========================================
 //    // Set up timer2 on,  interrupts, internal clock, prescalar 1, compare-value
 //    // This timer generates the time base for each horizontal video line
@@ -543,57 +478,30 @@ void main(void) {
     // init the threads
     PT_INIT(&pt_fft);
     PT_INIT(&pt_animate);
-    //PT_INIT(&pt_print);
-   // PT_INIT(&pt_animate);
-//    #define COLOR565_BLACK   0x0000
-//#define	COLOR565_BLUE    0x001F
-//#define	COLOR565_RED     0xF800
-//#define COLOR565_ORANGE  0xFB40
-//#define	COLOR565_GREEN   0x0CE0//0x07E0 
-//#define COLOR565_GREEN2  0xB6F1
-//#define COLOR565_CYAN    0x07FF
-//#define COLOR565_MAGENTA 0xF81F
-//#define COLOR565_LIPSTICK 0xE1CF
-//#define COLOR565_PURPLE  0x9957
-//#define COLOR565_YELLOW  0xFFE0
-//#define COLOR565_YELLOW2 0xFFC8
-//#define COLOR565_WHITE   0xFFFF
-    
-//    UINT16 colors[15] = {COLOR565_RED, COLOR565_ORANGE, COLOR565_YELLOW,COLOR565_GREEN, COLOR565_LIGHT_GREEN,
-//                            COLOR565_CYAN, COLOR565_BLUE, COLOR565_NICE_BLUE, COLOR565_PURPLE, COLOR565_PINK, COLOR565_MAGENTA,
-//                            COLOR565_LIPSTICK, COLOR565_PERIWINKLE, COLOR565_WHITE, COLOR565_ICE };
-//    int red = 15;
-//    int blue = 3;
-//    int green = 0;
-//    
-//    
-//    
-//    //blue+(green<<5)+(red<<11))
-//    
-//    int p;
-//    for (p =0; p < 15; p++){
-//        matrix_fillScreen(colors[p]);
-//        delay_ms(1000);
-//        //blue++;
-////        matrix_fillScreen(COLOR565_PURPLE);
-////        delay_ms(500);
-////        matrix_fillScreen(COLOR565_MAGENTA);
-////        delay_ms(500);
-////        matrix_fillScreen(COLOR565_PERIWINKLE);
-////        delay_ms(500);
-////        matrix_fillScreen(COLOR565_LIPSTICK);
-////        delay_ms(500);
-//    }
-//            
-        
-        
+
+
+
+   // use code below for color test
+   /* 
+   UINT16 colors[15] = {COLOR565_RED, COLOR565_ORANGE, COLOR565_YELLOW,COLOR565_GREEN, COLOR565_LIGHT_GREEN,
+                           COLOR565_CYAN, COLOR565_BLUE, COLOR565_NICE_BLUE, COLOR565_PURPLE, COLOR565_PINK, COLOR565_MAGENTA,
+                           COLOR565_LIPSTICK, COLOR565_PERIWINKLE, COLOR565_WHITE, COLOR565_ICE };
+   int red = 15;
+   int blue = 3;
+   int green = 0;
+
+   //blue+(green<<5)+(red<<11))
+   
+   int p;
+   for (p =0; p < 15; p++){
+       matrix_fillScreen(colors[p]);
+       delay_ms(1000);
+   }
+        */
         
         
     while (TRUE) {
-////        PT_SCHEDULE(protothread_update_matrix(&pt_update_matrix));
-//        PT_SCHEDULE(protothread_serial(&pt_serial));
-       PT_SCHEDULE(protothread_animate(&pt_animate));
-//          PT_SCHEDULE(protothread_print(&pt_print));
+        PT_SCHEDULE(protothread_animate(&pt_animate));
         PT_SCHEDULE(protothread_fft(&pt_fft));
     }
 }
