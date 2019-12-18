@@ -27,36 +27,22 @@
 #include "tft_gfx.h"
 
 
-////////////////////////////////////
-// clock AND protoThreads configure!
-// You MUST check this file!
-//  TEST OLD CODE WITH NEW THREADS
-// yup, the expander
-//#include "port_expander_brl4.h"
-// need for rand function
-////////////////////////////////////
-// lock out timer 2 interrupt during spi comm to port expander
-// This is necessary if you use the SPI2 channel in an ISR.
-// The ISR below runs the DAC using SPI2
-#define start_spi2_critical_section INTEnable(INT_T2, 0)
-#define end_spi2_critical_section INTEnable(INT_T2, 1)
-////////////////////////////////////
 
 
-ir_cmd_t ir_cmd;
+ir_cmd_t ir_cmd; //used for IR remote for previous project
 BOOL ir_cmd_new = FALSE;
 
 struct pt pt_update_matrix, pt_serial, pt_ir, pt_animate, pt_print;
 
 //// The original format BCD codified date/time and the decimal versions
-rtccTime bcd_tm, dec_tm;
-rtccDate bcd_dt, dec_dt;
+rtccTime bcd_tm, dec_tm; //used for clock for previous project
+rtccDate bcd_dt, dec_dt; //used for clock for previous project
 
 #define DAC_config_chan_A 0b0011000000000000
 // B-channel, 1x, active
 #define DAC_config_chan_B 0b1011000000000000
 // B-channel, 1x, active
-//#define DAC_config_chan_B 0b1011000000000000
+
 volatile unsigned int DAC_data_A, DAC_data_B ;// output value
 volatile SpiChannel spiChn = SPI_CHANNEL2 ;	// the SPI channel to use
 volatile int spiClkDiv = 4 ; // 10 MHz max speed for port expander!!
@@ -88,52 +74,6 @@ fix14 v_in[nSamp] ;
 static struct pt pt_fft ;
 
 
-//mips_fft16_setup(twiddles, log2N);
-
-
-//while (true)
-//{
-//// load complex input data into din
-//...
-//mips_fft16(dout, din, twiddles, scratch, log2N);
-//// do something with dout
-//...
-//}
-// === print a line on TFT =====================================================
-// print a line on the TFT
-// string buffer
-char buffer[60];
-void printLine(int line_number, char* print_buffer, short text_color, short back_color){
-    // line number 0 to 31 
-    /// !!! assumes tft_setRotation(0);
-    // print_buffer is the string to print
-    int v_pos;
-    v_pos = line_number * 10 ;
-    // erase the pixels
-    tft_fillRoundRect(0, v_pos, 239, 8, 1, back_color);// x,y,w,h,radius,color
-    tft_setTextColor(text_color); 
-    tft_setCursor(0, v_pos);
-    tft_setTextSize(1);
-    tft_writeString(print_buffer);
-}
-
-void printLine2(int line_number, char* print_buffer, short text_color, short back_color){
-    // line number 0 to 31 
-    /// !!! assumes tft_setRotation(0);
-    // print_buffer is the string to print
-    int v_pos;
-    v_pos = line_number * 20 ;
-    // erase the pixels
-    tft_fillRoundRect(0, v_pos, 239, 16, 1, back_color);// x,y,w,h,radius,color
-    tft_setTextColor(text_color); 
-    tft_setCursor(0, v_pos);
-    tft_setTextSize(2);
-    tft_writeString(print_buffer);
-}
-
-volatile int max = -1;
-volatile int bin = 0;
-
 //=== FFT ==============================================================
 // FFT
 #define N_WAVE          64    /* size of FFT 512 */
@@ -143,9 +83,9 @@ volatile int bin = 0;
 
 fix14 Sinewave[N_WAVE]; // a table of sines for the FFT
 fix14 window[N_WAVE]; // a table of window values for the FFT
-fix14 fr[N_WAVE], fi[N_WAVE];
-fix14 oldfr[N_WAVE] = {0};
-int pixels[nPixels] ;
+fix14 fr[N_WAVE], fi[N_WAVE]; //real and imaginary output of FFT
+fix14 oldfr[N_WAVE] = {0}; // the previous value of fr
+int pixels[nPixels] ; 
 
 void FFTfix(fix14 fr[], fix14 fi[], int m)
 //Adapted from code by:
